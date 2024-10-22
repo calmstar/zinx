@@ -29,7 +29,7 @@ func (s *Server) Start() {
 		// 监听端口成功
 		fmt.Println("Zinx listening success, name:", s.Name)
 
-		// 处理来自n个用户的链接请求
+		// 循环处理来自n个用户的链接请求
 		for {
 			conn, err := list.AcceptTCP()
 			if err != nil {
