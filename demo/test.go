@@ -2,83 +2,33 @@ package main
 
 import "fmt"
 
+// 可比较的结构体
+type ComparableStruct struct {
+	a int
+	b string
+}
+
+// 不可比较的结构体，包含不可比较的切片类型
+type NonComparableStruct struct {
+	c []int
+	d map[string]int
+}
+
 func main() {
-	s1 := &student{name: "zhangsan"}
-	s2 := &student{name: "lisi"}
-	s3 := &student{name: "wangwu"}
 
-	fmt.Println(s1.name, s2.name, " 加入观察班长信号队列中")
-	observerList := []observer{s1, s2}
-	m := &monitor{observerList}
-	fmt.Println(s3.name, " 加入观察班长信号队列中")
-	m.add(s3)
+	// 示例：不可比较的类型
+	fmt.Println("\n=== 不可比较的类型 ===")
+	// 切片是不可比较的
+	slice1 := [3]int{1, 2, 3}
+	slice2 := [3]int{1, 2, 4}
+	fmt.Println("slice1 == slice2:", slice1 == slice2) // 这行会导致编译错误
 
-	// 老师来了
-	fmt.Println("老师来了")
-	m.notify()
-
-	fmt.Println("========")
-	fmt.Println("踢出观察者：", s2.name)
-	m.del(s2)
-	fmt.Println("老师又来了")
-	m.notify()
-}
-
-/**
-触发：教师来了，
-被观察者：班长，站岗看老师是否来了
-观察者：学生，观察班长是否通知他们了
-*/
-
-// 抽象层 ----------
-type observer interface {
-	doSomething()
-}
-
-type beObserver interface {
-	add(o observer)
-	del(o observer)
-	notify()
-}
-
-// 基础层----------
-// 班长：充当被观察者（被学生观察的人）
-type monitor struct {
-	oList []observer
-}
-
-func (m *monitor) notify() {
-	if m.oList == nil {
-		return
-	}
-
-	for _, o := range m.oList {
-		o.doSomething()
-	}
-}
-
-func (m *monitor) add(o observer) {
-	m.oList = append(m.oList, o)
-}
-
-func (m *monitor) del(o observer) {
-	needDelIdx := -1
-	for i, v := range m.oList {
-		if v == o {
-			needDelIdx = i
-			break
-		}
-	}
-	if needDelIdx != -1 {
-		m.oList = append(m.oList[:needDelIdx], m.oList[needDelIdx+1:]...)
-	}
-}
-
-// 学生：充当观察者，观察班长给出的通知信号，然后做点动作
-type student struct {
-	name string
-}
-
-func (s *student) doSomething() {
-	fmt.Println(s.name, ", 停止嬉皮笑脸")
+	// 不可比较的结构体，因为包含不可比较的切片类型
+	//nonCompStruct1 := NonComparableStruct{c: []int{1, 2, 3}, d: map[string]int{"a": 1}}
+	//nonCompStruct2 := NonComparableStruct{c: []int{1, 2, 3}, d: map[string]int{"a": 1}}
+	//fmt.Println("nonCompStruct1 == nonCompStruct2:", nonCompStruct1 == nonCompStruct2) // 这行会导致编译错误
+	//
+	//cc := map[string]int{"a": 1}
+	//dd := map[string]int{"a": 1}
+	//fmt.Println(cc == dd)
 }

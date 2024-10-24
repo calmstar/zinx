@@ -9,8 +9,10 @@ import (
 type Server struct {
 	Name      string
 	IPVersion string
-	IP        string
-	Port      int
+	// 服务器绑定的ip
+	IP string
+	// 服务器绑定的端口
+	Port int
 }
 
 func (s *Server) Start() {
@@ -29,6 +31,7 @@ func (s *Server) Start() {
 		// 监听端口成功
 		fmt.Println("Zinx listening success, name:", s.Name)
 
+		cid := 0
 		// 循环处理来自n个用户的链接请求
 		for {
 			conn, err := list.AcceptTCP()
@@ -36,24 +39,10 @@ func (s *Server) Start() {
 				fmt.Printf("accept fail, err: %s \n", err)
 				continue
 			}
-			// 处理某个用户的请求
-			go func() {
-				// 循环处理监听该用户发送过来的消息，并发送回去
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf) // 该协程阻塞监听用户消息
-					if err != nil {
-						fmt.Println("recv data err:", err)
-						continue
-					}
-					fmt.Println("read data: ", string(buf))
-					_, err = conn.Write(buf[:cnt])
-					if err != nil {
-						fmt.Println("send data err:", err)
-						continue
-					}
-				}
-			}()
+			dealConn := NewConnection(conn, uint32(cid), callBackToClient)
+			cid++
+
+			go dealConn.Start()
 		}
 	}()
 
@@ -74,4 +63,15 @@ func NewServer(name string) ziface.IServer {
 		IP:        "0.0.0.0",
 		Port:      8080,
 	}
+}
+
+func callBackToClient(conn *net.TCPConn, buf []byte, cnt int) error {
+	// 处理某个用户的请求
+	fmt.Println("read data: ", string(buf))
+	_, err := conn.Write(buf[:cnt])
+	if err != nil {
+		fmt.Println("send data err:", err)
+		return fmt.Errorf("callBackToClient err: %s", err)
+	}
+	return nil
 }
