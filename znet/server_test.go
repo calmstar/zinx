@@ -6,7 +6,7 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	s := NewServer("zinx-v0.1")
+	s := NewServer()
 	s.Serve()
 
 	conn, err := net.Dial("tcp", "127.0.0.1:8080")

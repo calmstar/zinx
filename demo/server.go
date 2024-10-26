@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	s := znet.NewServer("[zinx]v0.3")
+	s := znet.NewServer()
 	s.AddRouter(&PingRouter{})
 	s.Serve()
 
