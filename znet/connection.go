@@ -16,6 +16,8 @@ type Connection struct {
 
 	// 该链接的方法处理api
 	HandleApi ziface.HandleFunc
+	Router    ziface.IRouter
+
 	//告知该链接已经退出/停止的 channel
 	ExitedBuffChan chan struct{}
 }
@@ -33,23 +35,33 @@ func NewConnection(conn *net.TCPConn, connId uint32, callBack ziface.HandleFunc)
 func (c *Connection) StartReader() {
 	fmt.Println("reader goroutine start......")
 	defer fmt.Printf("reader goroutine end...")
-	defer c.Stop()
+	defer c.Stop() //该方法退出，意味着链接请求完毕，该用户退出
 
 	for {
 		// 读取链接中的数据
 		buf := make([]byte, 512)
-		cnt, err := c.Conn.Read(buf)
+		_, err := c.Conn.Read(buf)
 		if err != nil {
 			fmt.Println("c.Conn.Read err: ", err)
 			continue
 		}
 
 		// 业务处理
-		err = c.HandleApi(c.Conn, buf, cnt)
-		if err != nil {
-			fmt.Println("HandleApi err: ", err)
-			return
+		//err = c.HandleApi(c.Conn, buf, cnt)
+		//if err != nil {
+		//	fmt.Println("HandleApi err: ", err)
+		//	return
+		//}
+		req := Request{
+			conn: c,
+			data: buf,
 		}
+		go func(r ziface.IRequest) {
+			c.Router.PreHandle(r)
+			c.Router.Handle(r)
+			c.Router.PostHandle(r)
+		}(&req)
+
 	}
 }
 
@@ -57,6 +69,7 @@ func (c *Connection) Start() {
 	// 针对该链接的读取和操作
 	go c.StartReader()
 
+	// 监控该链接是否操作完毕
 	select {
 	case <-c.ExitedBuffChan:
 		return

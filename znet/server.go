@@ -12,7 +12,33 @@ type Server struct {
 	// 服务器绑定的ip
 	IP string
 	// 服务器绑定的端口
-	Port int
+	Port   int
+	Router ziface.IRouter
+}
+
+func NewServer(name string) ziface.IServer {
+	return &Server{
+		Name:      name,
+		IPVersion: "tcp4",
+		IP:        "0.0.0.0",
+		Port:      8080,
+		Router:    nil,
+	}
+}
+
+func callBackToClient(conn *net.TCPConn, buf []byte, cnt int) error {
+	// 处理某个用户的请求
+	fmt.Println("read data: ", string(buf))
+	_, err := conn.Write(buf[:cnt])
+	if err != nil {
+		fmt.Println("send data err:", err)
+		return fmt.Errorf("callBackToClient err: %s", err)
+	}
+	return nil
+}
+
+func (s *Server) AddRouter() {
+
 }
 
 func (s *Server) Start() {
@@ -42,6 +68,7 @@ func (s *Server) Start() {
 			dealConn := NewConnection(conn, uint32(cid), callBackToClient)
 			cid++
 
+			// 起一个协程单独出来该用户链接
 			go dealConn.Start()
 		}
 	}()
@@ -54,24 +81,4 @@ func (s *Server) Stop() {
 
 func (s *Server) Serve() {
 	s.Start()
-}
-
-func NewServer(name string) ziface.IServer {
-	return &Server{
-		Name:      name,
-		IPVersion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      8080,
-	}
-}
-
-func callBackToClient(conn *net.TCPConn, buf []byte, cnt int) error {
-	// 处理某个用户的请求
-	fmt.Println("read data: ", string(buf))
-	_, err := conn.Write(buf[:cnt])
-	if err != nil {
-		fmt.Println("send data err:", err)
-		return fmt.Errorf("callBackToClient err: %s", err)
-	}
-	return nil
 }
