@@ -26,19 +26,19 @@ func NewServer(name string) ziface.IServer {
 	}
 }
 
-func callBackToClient(conn *net.TCPConn, buf []byte, cnt int) error {
-	// 处理某个用户的请求
-	fmt.Println("read data: ", string(buf))
-	_, err := conn.Write(buf[:cnt])
-	if err != nil {
-		fmt.Println("send data err:", err)
-		return fmt.Errorf("callBackToClient err: %s", err)
-	}
-	return nil
-}
+//func callBackToClient(conn *net.TCPConn, buf []byte, cnt int) error {
+//	// 处理某个用户的请求
+//	fmt.Println("read data: ", string(buf))
+//	_, err := conn.Write(buf[:cnt])
+//	if err != nil {
+//		fmt.Println("send data err:", err)
+//		return fmt.Errorf("callBackToClient err: %s", err)
+//	}
+//	return nil
+//}
 
-func (s *Server) AddRouter() {
-
+func (s *Server) AddRouter(r ziface.IRouter) {
+	s.Router = r
 }
 
 func (s *Server) Start() {
@@ -65,7 +65,7 @@ func (s *Server) Start() {
 				fmt.Printf("accept fail, err: %s \n", err)
 				continue
 			}
-			dealConn := NewConnection(conn, uint32(cid), callBackToClient)
+			dealConn := NewConnection(conn, uint32(cid), s.Router)
 			cid++
 
 			// 起一个协程单独出来该用户链接

@@ -15,20 +15,21 @@ type Connection struct {
 	IsClosed bool
 
 	// 该链接的方法处理api
-	HandleApi ziface.HandleFunc
-	Router    ziface.IRouter
+	//HandleApi ziface.HandleFunc
+	Router ziface.IRouter
 
 	//告知该链接已经退出/停止的 channel
 	ExitedBuffChan chan struct{}
 }
 
-func NewConnection(conn *net.TCPConn, connId uint32, callBack ziface.HandleFunc) ziface.IConnection {
+func NewConnection(conn *net.TCPConn, connId uint32, r ziface.IRouter) ziface.IConnection {
 	return &Connection{
-		Conn:           conn,
-		ConnId:         connId,
-		IsClosed:       false,
-		HandleApi:      callBack,
+		Conn:     conn,
+		ConnId:   connId,
+		IsClosed: false,
+		//HandleApi:      callBack,
 		ExitedBuffChan: make(chan struct{}, 0),
+		Router:         r,
 	}
 }
 
