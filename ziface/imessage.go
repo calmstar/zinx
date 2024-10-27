@@ -1,6 +1,6 @@
 package ziface
 
-type imessage interface {
+type IMessage interface {
 	GetData() []byte
 	GetDataLen() uint32
 	GetMsgId() uint32

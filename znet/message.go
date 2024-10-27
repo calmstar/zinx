@@ -6,7 +6,7 @@ type Message struct {
 	Data    []byte // 消息
 }
 
-func NewMessage(id uint32, data []byte) *Message {
+func NewMsgPacket(id uint32, data []byte) *Message {
 	return &Message{
 		Id:      id,
 		DataLen: uint32(len(data)),

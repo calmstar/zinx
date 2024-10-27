@@ -1,102 +1,39 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"math/rand"
-	"strconv"
-	"sync"
-	"time"
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
+	buff := bytes.NewBuffer([]byte{})
+	cnt, err := buff.Write([]byte("hhh"))
+	buff.Write([]byte(" nihao "))
+	fmt.Println(cnt, err, buff)
 
-	const Max = 100000
-	const NumReceivers = 10
-	const NumSenders = 1000
+	buff.WriteString(" world")
+	fmt.Println(string(buff.Bytes()))
 
-	wg := sync.WaitGroup{}
-	wg.Add(NumReceivers)
+	var b byte = '!'
+	buff.WriteByte(b)
+	fmt.Println(buff.String())
 
-	// 1. 业务通道
-	dataCh := make(chan int)
+	var s rune = '中'
+	buff.WriteRune(s)
+	fmt.Println(buff.String())
 
-	// 2. 管理通道：必须是无缓冲通道
-	// 其发送者是：额外启动的媒介协程
-	// 其接收者是：业务通道的所有发送者和接收者
-	stopCh := make(chan struct{})
+	//f, _ := os.Create("test.log")
+	//writeCnt, err := buff.WriteTo(f)
+	//fmt.Println(writeCnt, err)
 
-	// 3. 媒介通道：必须是缓冲通道
-	// 其发送者是：业务通道的所有接收者(实际情况是谁控制退出，就是谁)
-	// 其接收者是：媒介协程（唯一）
-	toStop := make(chan string, 1)
+	read3 := make([]byte, 3)
+	readCnt, err := buff.Read(read3)
+	fmt.Println(err, readCnt, string(read3), buff.String())
 
-	var stoppedBy string
+	b2 := bytes.NewBufferString("")
+	b2.WriteByte('a')
+	b2.WriteString("bcdefg")
+	read1, err := b2.ReadByte()
+	fmt.Println(string(read1), b2)
 
-	// 媒介协程
-	go func() {
-		stoppedBy = <-toStop
-		close(stopCh)
-	}()
-
-	// 业务通道发送者
-	for i := 0; i < NumSenders; i++ {
-		go func(id string) {
-			for {
-				// 提前检查管理通道是否关闭
-				// 让业务通道发送者早尽量退出
-				select {
-				case <-stopCh:
-					return
-				default:
-				}
-
-				value := rand.Intn(Max)
-				select {
-				case <-stopCh:
-					return
-				case dataCh <- value:
-				}
-			}
-		}(strconv.Itoa(i))
-	}
-
-	// 业务通道的接收者
-	for i := 0; i < NumReceivers; i++ {
-		go func(id string) {
-			defer wg.Done()
-
-			for {
-				// 提前检查管理通道是否关闭
-				// 让业务通道接收者早尽量退出
-				select {
-				case <-stopCh:
-					return
-				default:
-				}
-
-				select {
-				case <-stopCh:
-					return
-				case value := <-dataCh:
-					// 一旦满足某个条件，就通过媒介通道发消息给媒介协程
-					// 以关闭管理通道的形式，广播给所有业务通道的协程退出
-					if value == 6666 {
-						// 务必使用 select，两个目的：
-						// 1、防止协程阻塞
-						// 2、防止向已关闭的通道发送数据导致panic
-						select {
-						case toStop <- "接收者#" + id:
-						default:
-						}
-						return
-					}
-
-				}
-			}
-		}(strconv.Itoa(i))
-	}
-
-	wg.Wait()
-	fmt.Println("被" + stoppedBy + "终止了")
 }
