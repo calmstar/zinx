@@ -69,7 +69,7 @@ func (s *Server) Start() {
 			dealConn := NewConnection(conn, uint32(cid), s.Router)
 			cid++
 
-			// 起一个协程单独出来该用户链接
+			// 起一个协程单独处理该用户链接
 			go dealConn.Start()
 		}
 	}()
