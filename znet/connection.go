@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"zinx/ziface"
@@ -40,29 +41,48 @@ func (c *Connection) StartReader() {
 
 	for {
 		// 读取链接中的数据
-		buf := make([]byte, 512)
-		_, err := c.Conn.Read(buf)
-		if err != nil {
-			fmt.Println("c.Conn.Read err: ", err)
-			continue
-		}
-
+		//buf := make([]byte, utils.GlobalObject.MaxPacketSize)
+		//_, err := c.Conn.Read(buf)
+		//if err != nil {
+		//	fmt.Println("c.Conn.Read err: ", err)
+		//	continue
+		//}
 		// 业务处理
 		//err = c.HandleApi(c.Conn, buf, cnt)
 		//if err != nil {
 		//	fmt.Println("HandleApi err: ", err)
 		//	return
 		//}
+
+		// 创建拆包解包对象
+		dp := NewDataPack()
+		headData := make([]byte, dp.GetHeadLen())
+		if _, err := c.Conn.Read(headData); err != nil {
+			fmt.Println("conn read data err: ", err)
+			return
+		}
+
+		msg, err := dp.UnPack(headData)
+		if err != nil {
+			fmt.Println("unpack err: ", err)
+			return
+		}
+		data := make([]byte, msg.GetDataLen())
+		if _, err = c.Conn.Read(data); err != nil {
+			fmt.Println("read data err: ", err)
+			return
+		}
+		msg.SetData(data)
+
 		req := Request{
 			conn: c,
-			data: buf,
+			msg:  msg,
 		}
 		go func(r ziface.IRequest) {
 			c.Router.PreHandle(r)
 			c.Router.Handle(r)
 			c.Router.PostHandle(r)
 		}(&req)
-
 	}
 }
 
@@ -88,6 +108,26 @@ func (c *Connection) Stop() {
 		fmt.Println("Close err: ", err)
 		return
 	}
+}
+
+func (c *Connection) SendMsg(msgId uint32, data []byte) error {
+	if c.IsClosed == true {
+		return errors.New("connection closed when send msg")
+	}
+	dp := NewDataPack()
+	msg := NewMsgPacket(msgId, data)
+	pkData, err := dp.Pack(msg)
+	if err != nil {
+		fmt.Println("pack err: ", err)
+		return err
+	}
+	_, err = c.Conn.Write(pkData)
+	if err != nil {
+		fmt.Printf("conn write err:%v \n", err)
+		c.ExitedBuffChan <- struct{}{}
+		return fmt.Errorf("conn write err:%v", err)
+	}
+
 }
 
 func (c *Connection) GetConnId() uint32 {
