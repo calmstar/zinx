@@ -127,7 +127,7 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 		c.ExitedBuffChan <- struct{}{}
 		return fmt.Errorf("conn write err:%v", err)
 	}
-
+	return nil
 }
 
 func (c *Connection) GetConnId() uint32 {
