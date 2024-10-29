@@ -30,7 +30,7 @@ type GlobalObj struct {
 func init() {
 	GlobalObject = &GlobalObj{
 		Host:          "0.0.0.0",
-		TcpPort:       8888,
+		TcpPort:       8080,
 		Name:          "default-zinx",
 		Version:       "v0.3",
 		MaxPacketSize: 4096,

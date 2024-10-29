@@ -9,12 +9,11 @@ import (
 )
 
 func main() {
-	main2()
-	//s := znet.NewServer()
-	//s.AddRouter(&PingRouter{})
-	//s.Serve()
-	//
-	//select {}
+	s := znet.NewServer()
+	s.AddRouter(&PingRouter{})
+	s.Serve()
+
+	select {}
 }
 
 type PingRouter struct {
@@ -22,8 +21,15 @@ type PingRouter struct {
 }
 
 func (p *PingRouter) Handle(r ziface.IRequest) {
-	fmt.Println("handling, ", string(r.GetData()))
-	r.GetConnection().GetTCPConnection().Write([]byte("hello"))
+	fmt.Printf("serve recv data, id：%v, data:%s \n", r.GetMsgId(), string(r.GetData()))
+
+	// 发送数据
+	//r.GetConnection().GetTCPConnection().Write([]byte("hello"))
+	err := r.GetConnection().SendMsg(1, []byte("ping ping"))
+	if err != nil {
+		fmt.Println("handle err: ", err)
+		return
+	}
 }
 
 func (p *PingRouter) PostHandle(r ziface.IRequest) {
@@ -35,7 +41,7 @@ func (p *PingRouter) PreHandle(r ziface.IRequest) {
 }
 
 func main2() {
-	l, _ := net.Listen("tcp", "127.0.0.1:7777")
+	l, _ := net.Listen("tcp", "127.0.0.1:8080")
 
 	for {
 		conn, _ := l.Accept()

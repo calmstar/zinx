@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"time"
 	"zinx/znet"
 )
 
 func main() {
-	conn, err := net.Dial("tcp", "127.0.0.1:7777")
+	conn, err := net.Dial("tcp", "127.0.0.1:8080")
 	if err != nil {
 		fmt.Println("net.Dial err:", err)
 		return
@@ -16,9 +17,9 @@ func main() {
 
 	i := 1
 	for {
-		// msg
+		// 写入msg到conn中
 		data := fmt.Sprintf("msg:%d", i)
-		msg := znet.NewMsgPacket(uint32(i), []byte(data))
+		msg := znet.NewMsg(uint32(i), []byte(data))
 
 		pack := znet.NewDataPack()
 		msgBytes, _ := pack.Pack(msg)
@@ -28,13 +29,16 @@ func main() {
 			continue
 		}
 
-		//buf := make([]byte, 512)
-		//cnt, err := conn.Read(buf)
-		//if err != nil {
-		//	fmt.Println("Read err:", err)
-		//	continue
-		//}
-		//fmt.Println("read data:", string(buf), ", cnt:", cnt)
+		// 读取出msg
+		headData := make([]byte, pack.GetHeadLen())
+		io.ReadFull(conn, headData)
+		msgHead, _ := pack.UnPack(headData)
+		if msgHead.GetDataLen() > 0 {
+			writeMsg := msgHead.(*znet.Message)
+			writeMsg.Data = make([]byte, writeMsg.GetDataLen())
+			io.ReadFull(conn, writeMsg.Data)
+			fmt.Printf("client recv msg, id:%d, dataLen:%d, data:%s \n", writeMsg.GetMsgId(), writeMsg.GetDataLen(), writeMsg.GetData())
+		}
 
 		time.Sleep(time.Second)
 		i++

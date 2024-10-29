@@ -115,7 +115,7 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 		return errors.New("connection closed when send msg")
 	}
 	dp := NewDataPack()
-	msg := NewMsgPacket(msgId, data)
+	msg := NewMsg(msgId, data)
 	pkData, err := dp.Pack(msg)
 	if err != nil {
 		fmt.Println("pack err: ", err)
