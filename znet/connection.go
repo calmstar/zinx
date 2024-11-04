@@ -17,20 +17,20 @@ type Connection struct {
 
 	// 该链接的方法处理api
 	//HandleApi ziface.HandleFunc
-	Router ziface.IRouter
+	msgHandler ziface.IMsgHandler
 
 	//告知该链接已经退出/停止的 channel
 	ExitedBuffChan chan struct{}
 }
 
-func NewConnection(conn *net.TCPConn, connId uint32, r ziface.IRouter) ziface.IConnection {
+func NewConnection(conn *net.TCPConn, connId uint32, msgHandler ziface.IMsgHandler) ziface.IConnection {
 	return &Connection{
 		Conn:     conn,
 		ConnId:   connId,
 		IsClosed: false,
 		//HandleApi:      callBack,
 		ExitedBuffChan: make(chan struct{}, 0),
-		Router:         r,
+		msgHandler:     msgHandler,
 	}
 }
 
@@ -79,9 +79,7 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 		go func(r ziface.IRequest) {
-			c.Router.PreHandle(r)
-			c.Router.Handle(r)
-			c.Router.PostHandle(r)
+			c.msgHandler.DoMsgHandler(r)
 		}(&req)
 	}
 }

@@ -13,17 +13,17 @@ type Server struct {
 	// 服务器绑定的ip
 	IP string
 	// 服务器绑定的端口
-	Port   int
-	Router ziface.IRouter
+	Port       int
+	msgHandler ziface.IMsgHandler
 }
 
 func NewServer() ziface.IServer {
 	return &Server{
-		Name:      utils.GlobalObject.Name,
-		IPVersion: "tcp4",
-		IP:        utils.GlobalObject.Host,
-		Port:      utils.GlobalObject.TcpPort,
-		Router:    nil,
+		Name:       utils.GlobalObject.Name,
+		IPVersion:  "tcp4",
+		IP:         utils.GlobalObject.Host,
+		Port:       utils.GlobalObject.TcpPort,
+		msgHandler: NewMsgHandler(),
 	}
 }
 
@@ -38,8 +38,8 @@ func NewServer() ziface.IServer {
 //	return nil
 //}
 
-func (s *Server) AddRouter(r ziface.IRouter) {
-	s.Router = r
+func (s *Server) AddRouter(msgId uint32, r ziface.IRouter) {
+	s.msgHandler.AddRouter(msgId, r)
 }
 
 func (s *Server) Start() {
@@ -66,7 +66,7 @@ func (s *Server) Start() {
 				fmt.Printf("accept fail, err: %s \n", err)
 				continue
 			}
-			dealConn := NewConnection(conn, uint32(cid), s.Router)
+			dealConn := NewConnection(conn, uint32(cid), s.msgHandler)
 			cid++
 
 			// 起一个协程单独处理该用户链接
