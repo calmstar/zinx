@@ -45,6 +45,10 @@ func (s *Server) AddRouter(msgId uint32, r ziface.IRouter) {
 func (s *Server) Start() {
 	fmt.Printf("[START] zinx server start at IP: %s, port:%d \n", s.IP, s.Port)
 	go func() {
+		// 开启业务处理协程池
+		s.msgHandler.StartWorkerPool()
+
+		// 监听服务启动开始
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
 			fmt.Printf("ResolveTCPAddr err:%v \n", err)

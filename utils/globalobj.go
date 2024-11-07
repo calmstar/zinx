@@ -25,16 +25,21 @@ type GlobalObj struct {
 
 	MaxPacketSize uint32 //都需数据包的最大值
 	MaxConn       int    //当前服务器主机允许的最大链接个数
+
+	WorkerPoolSize   uint32
+	MaxWorkerTaskLen uint32
 }
 
 func init() {
 	GlobalObject = &GlobalObj{
-		Host:          "0.0.0.0",
-		TcpPort:       8080,
-		Name:          "default-zinx",
-		Version:       "v0.3",
-		MaxPacketSize: 4096,
-		MaxConn:       12000,
+		Host:             "0.0.0.0",
+		TcpPort:          8080,
+		Name:             "default-zinx",
+		Version:          "v0.3",
+		MaxPacketSize:    4096,
+		MaxConn:          12000,
+		WorkerPoolSize:   5,
+		MaxWorkerTaskLen: 1024,
 	}
 	GlobalObject.reload()
 }

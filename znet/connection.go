@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -19,6 +20,9 @@ type Connection struct {
 	//HandleApi ziface.HandleFunc
 	msgHandler ziface.IMsgHandler
 
+	// 消息管道，用来解耦读协程和写协程
+	msgChan chan []byte
+
 	//告知该链接已经退出/停止的 channel
 	ExitedBuffChan chan struct{}
 }
@@ -31,12 +35,33 @@ func NewConnection(conn *net.TCPConn, connId uint32, msgHandler ziface.IMsgHandl
 		//HandleApi:      callBack,
 		ExitedBuffChan: make(chan struct{}, 0),
 		msgHandler:     msgHandler,
+		msgChan:        make(chan []byte),
 	}
 }
 
-func (c *Connection) StartReader() {
+// 写入客户端消息的协程
+func (c *Connection) startWriter() {
+	fmt.Println("write goroutine start...")
+	defer fmt.Println("write goroutine end...")
+
+	for {
+		select {
+		case <-c.ExitedBuffChan: //读goroutine，负责掌管是否关闭链接
+			return
+		case data := <-c.msgChan:
+			_, err := c.Conn.Write(data)
+			if err != nil {
+				fmt.Printf("conn write err:%v \n", err)
+				return // 发生报错会导致有问题
+			}
+		}
+	}
+}
+
+// 读取客户端消息的协程
+func (c *Connection) startReader() {
 	fmt.Println("reader goroutine start......")
-	defer fmt.Printf("reader goroutine end...")
+	defer fmt.Printf("reader goroutine end...\n")
 	defer c.Stop() //该方法退出，意味着链接请求完毕，该用户退出
 
 	for {
@@ -57,40 +82,48 @@ func (c *Connection) StartReader() {
 		// 创建拆包解包对象
 		dp := NewDataPack()
 		headData := make([]byte, dp.GetHeadLen())
+		// 循环阻塞读协程，不断从链接读取数据出来
+		// 先读头数据，解包，知道后续数据包长度；再读数据包，解包从消息
 		if _, err := c.Conn.Read(headData); err != nil {
 			fmt.Println("conn read data err: ", err)
 			return
 		}
-
-		msg, err := dp.UnPack(headData)
+		msg, err := dp.UnPack(headData) // int类型的数据，要单独根据大小字节序列进行解包
 		if err != nil {
 			fmt.Println("unpack err: ", err)
 			return
 		}
-		data := make([]byte, msg.GetDataLen())
+		data := make([]byte, msg.GetDataLen()) // string类型的数据，直接获得
 		if _, err = c.Conn.Read(data); err != nil {
 			fmt.Println("read data err: ", err)
 			return
 		}
 		msg.SetData(data)
-
-		req := Request{
+		req := &Request{
 			conn: c,
 			msg:  msg,
 		}
-		go func(r ziface.IRequest) {
-			c.msgHandler.DoMsgHandler(r)
-		}(&req)
+
+		// 业务操作，再开协程 【可能会导致过多业务协程，所以下一节会使用业务协程池来处理workerPool】
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			c.msgHandler.SendMsgToQueue(req)
+		} else {
+			go func(r ziface.IRequest) {
+				c.msgHandler.DoMsgHandler(r)
+			}(req)
+		}
+
 	}
 }
 
 func (c *Connection) Start() {
 	// 针对该链接的读取和操作
-	go c.StartReader()
+	go c.startReader()
+	go c.startWriter()
 
 	// 监控该链接是否操作完毕
 	select {
-	case <-c.ExitedBuffChan:
+	case <-c.ExitedBuffChan: // 读goroutine，负责掌管是否关闭链接
 		return
 	}
 }
@@ -119,12 +152,14 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 		fmt.Println("pack err: ", err)
 		return err
 	}
-	_, err = c.Conn.Write(pkData)
-	if err != nil {
-		fmt.Printf("conn write err:%v \n", err)
-		c.ExitedBuffChan <- struct{}{}
-		return fmt.Errorf("conn write err:%v", err)
-	}
+	// 解耦, 发送给写链接的协程
+	c.msgChan <- pkData
+	//_, err = c.Conn.Write(pkData)
+	//if err != nil {
+	//	fmt.Printf("conn write err:%v \n", err)
+	//	c.ExitedBuffChan <- struct{}{}
+	//	return fmt.Errorf("conn write err:%v", err)
+	//}
 	return nil
 }
 
