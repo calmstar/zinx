@@ -18,25 +18,33 @@ type Connection struct {
 
 	// 该链接的方法处理api
 	//HandleApi ziface.HandleFunc
+	// 消息路由处理功能
 	msgHandler ziface.IMsgHandler
 
-	// 消息管道，用来解耦读协程和写协程
+	// 消息管道，用来解耦对于客户端的读协程和写协程
 	msgChan chan []byte
 
 	//告知该链接已经退出/停止的 channel
 	ExitedBuffChan chan struct{}
+
+	// 当前conn属于哪个server
+	TcpServer ziface.IServer
 }
 
-func NewConnection(conn *net.TCPConn, connId uint32, msgHandler ziface.IMsgHandler) ziface.IConnection {
-	return &Connection{
-		Conn:     conn,
-		ConnId:   connId,
-		IsClosed: false,
+func NewConnection(server ziface.IServer, conn *net.TCPConn, connId uint32, msgHandler ziface.IMsgHandler) ziface.IConnection {
+	c := &Connection{
+		TcpServer: server,
+		Conn:      conn,
+		ConnId:    connId,
+		IsClosed:  false,
 		//HandleApi:      callBack,
 		ExitedBuffChan: make(chan struct{}, 0),
 		msgHandler:     msgHandler,
 		msgChan:        make(chan []byte),
 	}
+	// 将连接添加到管理模块
+	c.TcpServer.GetConnManager().Add(c)
+	return c
 }
 
 // 写入客户端消息的协程
@@ -139,6 +147,7 @@ func (c *Connection) Stop() {
 		fmt.Println("Close err: ", err)
 		return
 	}
+	c.TcpServer.GetConnManager().Remove(c.GetConnId())
 }
 
 func (c *Connection) SendMsg(msgId uint32, data []byte) error {
