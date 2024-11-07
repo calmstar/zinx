@@ -10,10 +10,20 @@ import (
 
 func main() {
 	s := znet.NewServer()
-	s.AddRouter(&PingRouter{})
+	s.AddRouter(1, &PingRouter{})
+	s.AddRouter(2, &ZinxRouter{})
 	s.Serve()
 
 	select {}
+}
+
+type ZinxRouter struct {
+	*znet.BaseRouter
+}
+
+func (z *ZinxRouter) Handle(r ziface.IRequest) {
+	fmt.Printf("Serve ZinxRouter recv data, id：%v, data:%s \n", r.GetMsgId(), string(r.GetData()))
+	r.GetConnection().SendMsg(2, []byte("zinx router"))
 }
 
 type PingRouter struct {
@@ -21,8 +31,7 @@ type PingRouter struct {
 }
 
 func (p *PingRouter) Handle(r ziface.IRequest) {
-	fmt.Printf("serve recv data, id：%v, data:%s \n", r.GetMsgId(), string(r.GetData()))
-
+	fmt.Printf("Serve PingRouter recv data, id：%v, data:%s \n", r.GetMsgId(), string(r.GetData()))
 	// 发送数据
 	//r.GetConnection().GetTCPConnection().Write([]byte("hello"))
 	err := r.GetConnection().SendMsg(1, []byte("ping ping"))
@@ -30,14 +39,6 @@ func (p *PingRouter) Handle(r ziface.IRequest) {
 		fmt.Println("handle err: ", err)
 		return
 	}
-}
-
-func (p *PingRouter) PostHandle(r ziface.IRequest) {
-	fmt.Println("postHandle")
-}
-
-func (p *PingRouter) PreHandle(r ziface.IRequest) {
-	fmt.Println("preHandle")
 }
 
 func main2() {
