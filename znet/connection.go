@@ -23,6 +23,8 @@ type Connection struct {
 
 	// 消息管道，用来解耦对于客户端的读协程和写协程
 	msgChan chan []byte
+	// 有缓冲
+	msgBuffChan chan []byte
 
 	//告知该链接已经退出/停止的 channel
 	ExitedBuffChan chan struct{}
@@ -41,6 +43,7 @@ func NewConnection(server ziface.IServer, conn *net.TCPConn, connId uint32, msgH
 		ExitedBuffChan: make(chan struct{}, 0),
 		msgHandler:     msgHandler,
 		msgChan:        make(chan []byte),
+		msgBuffChan:    make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 	}
 	// 将连接添加到管理模块
 	c.TcpServer.GetConnManager().Add(c)
@@ -56,10 +59,24 @@ func (c *Connection) startWriter() {
 		select {
 		case <-c.ExitedBuffChan: //读goroutine，负责掌管是否关闭链接
 			return
-		case data := <-c.msgChan:
+		case data, ok := <-c.msgChan:
+			if !ok {
+				fmt.Println("msgChan is Closed")
+				break
+			}
 			_, err := c.Conn.Write(data)
 			if err != nil {
 				fmt.Printf("conn write err:%v \n", err)
+				return // 发生报错会导致有问题
+			}
+		case data, ok := <-c.msgBuffChan:
+			if !ok {
+				fmt.Println("msgBuffChan is Closed")
+				break
+			}
+			_, err := c.Conn.Write(data)
+			if err != nil {
+				fmt.Printf("conn write buff err:%v \n", err)
 				return // 发生报错会导致有问题
 			}
 		}
@@ -142,6 +159,7 @@ func (c *Connection) Stop() {
 	}
 	c.IsClosed = true
 	close(c.ExitedBuffChan)
+	close(c.msgBuffChan)
 	err := c.Conn.Close()
 	if err != nil {
 		fmt.Println("Close err: ", err)
@@ -169,6 +187,22 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 	//	c.ExitedBuffChan <- struct{}{}
 	//	return fmt.Errorf("conn write err:%v", err)
 	//}
+	return nil
+}
+
+func (c *Connection) SendBuffMsg(msgId uint32, data []byte) error {
+	if c.IsClosed == true {
+		return errors.New("connection closed when send msg")
+	}
+	dp := NewDataPack()
+	msg := NewMsg(msgId, data)
+	pkData, err := dp.Pack(msg)
+	if err != nil {
+		fmt.Println("pack err: ", err)
+		return err
+	}
+	// 解耦, 发送给写链接的协程
+	c.msgBuffChan <- pkData
 	return nil
 }
 

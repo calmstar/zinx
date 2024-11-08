@@ -3,5 +3,6 @@
   "Host":"127.0.0.1",
   "TcpPort":8080,
   "MaxConn":3,
-  "WorkerPoolSize": 10
+  "WorkerPoolSize": 10,
+  "MaxMsgChanLen": 1024
 }

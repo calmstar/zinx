@@ -13,8 +13,10 @@ type IConnection interface {
 	GetRemoteAddr() net.Addr
 	// 获取tcp socket链接
 	GetTCPConnection() *net.TCPConn
-	// 发送封包的数据方法
+	// 发送消息给客户端（无缓冲）
 	SendMsg(msgId uint32, data []byte) error
+	// 发送消息给客户端（有缓冲）
+	SendBuffMsg(msgId uint32, data []byte) error
 }
 
 type HandleFunc func(conn *net.TCPConn, data []byte, len int) error

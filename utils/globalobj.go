@@ -26,8 +26,10 @@ type GlobalObj struct {
 	MaxPacketSize uint32 //都需数据包的最大值
 	MaxConn       uint32 //当前服务器主机允许的最大链接个数
 
-	WorkerPoolSize   uint32
-	MaxWorkerTaskLen uint32
+	WorkerPoolSize   uint32 // 工作协程数量
+	MaxWorkerTaskLen uint32 // 每个工作协程对应的任务队列的长度
+
+	MaxMsgChanLen uint32 //向客户端写消息，消息通道的最大长度容量
 }
 
 func init() {
@@ -40,6 +42,7 @@ func init() {
 		MaxConn:          12000,
 		WorkerPoolSize:   5,
 		MaxWorkerTaskLen: 1024,
+		MaxMsgChanLen:    1024,
 	}
 	GlobalObject.reload()
 }
