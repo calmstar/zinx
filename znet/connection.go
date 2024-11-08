@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"zinx/utils"
 	"zinx/ziface"
 )
@@ -31,6 +32,9 @@ type Connection struct {
 
 	// 当前conn属于哪个server
 	TcpServer ziface.IServer
+
+	property      map[string]interface{}
+	propertyMutex *sync.RWMutex
 }
 
 func NewConnection(server ziface.IServer, conn *net.TCPConn, connId uint32, msgHandler ziface.IMsgHandler) ziface.IConnection {
@@ -44,6 +48,8 @@ func NewConnection(server ziface.IServer, conn *net.TCPConn, connId uint32, msgH
 		msgHandler:     msgHandler,
 		msgChan:        make(chan []byte),
 		msgBuffChan:    make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
+		property:       make(map[string]interface{}),
+		propertyMutex:  &sync.RWMutex{},
 	}
 	// 将连接添加到管理模块
 	c.TcpServer.GetConnManager().Add(c)
@@ -221,4 +227,28 @@ func (c *Connection) GetRemoteAddr() net.Addr {
 
 func (c *Connection) GetTCPConnection() *net.TCPConn {
 	return c.Conn
+}
+
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyMutex.Lock()
+	defer c.propertyMutex.Unlock()
+
+	c.property[key] = value
+}
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyMutex.RLock()
+	defer c.propertyMutex.RUnlock()
+
+	if v, ok := c.property[key]; ok {
+		return v, nil
+	} else {
+		return nil, errors.New("key not exist")
+	}
+}
+
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyMutex.Lock()
+	defer c.propertyMutex.Unlock()
+
+	delete(c.property, key)
 }

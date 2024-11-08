@@ -47,11 +47,19 @@ func (p *PingRouter) Handle(r ziface.IRequest) {
 
 func DoConnectionStart(c ziface.IConnection) {
 	fmt.Println("conn start do something")
+	c.SetProperty("name", "ermao")
+	c.SetProperty("home", "guangzhou")
 	c.SendMsg(1, []byte("DoConnectionStart"))
 }
 
 func DoConnectionStop(c ziface.IConnection) {
 	fmt.Println("conn stop do something")
+	name, ok1 := c.GetProperty("name")
+	home, ok2 := c.GetProperty("home")
+	if ok1 != nil || ok2 != nil {
+
+	}
+	fmt.Printf("lost conn, name:%s, home:%s \n", name, home)
 }
 
 func main2() {
