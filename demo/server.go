@@ -10,10 +10,13 @@ import (
 
 func main() {
 	s := znet.NewServer()
-	s.AddRouter(1, &PingRouter{})
+	s.AddRouter(1, &PingRouter{}) // 定义 id 映射 对应的路由信息
 	s.AddRouter(2, &ZinxRouter{})
-	s.Serve()
 
+	s.SetOnConnStart(DoConnectionStart)
+	s.SetOnConnStop(DoConnectionStop)
+
+	s.Serve()
 	select {}
 }
 
@@ -23,6 +26,7 @@ type ZinxRouter struct {
 
 func (z *ZinxRouter) Handle(r ziface.IRequest) {
 	fmt.Printf("Serve ZinxRouter recv data, id：%v, data:%s \n", r.GetMsgId(), string(r.GetData()))
+	// 这里的msgID，打包msg要用到，跟zinx的路由标识统一，也是为了是给客户端看的表示
 	r.GetConnection().SendMsg(2, []byte("zinx router"))
 }
 
@@ -39,6 +43,15 @@ func (p *PingRouter) Handle(r ziface.IRequest) {
 		fmt.Println("handle err: ", err)
 		return
 	}
+}
+
+func DoConnectionStart(c ziface.IConnection) {
+	fmt.Println("conn start do something")
+	c.SendMsg(1, []byte("DoConnectionStart"))
+}
+
+func DoConnectionStop(c ziface.IConnection) {
+	fmt.Println("conn stop do something")
 }
 
 func main2() {

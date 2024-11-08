@@ -145,6 +145,8 @@ func (c *Connection) Start() {
 	// 针对该链接的读取和操作
 	go c.startReader()
 	go c.startWriter()
+	// 链接刚起来的的，回调函数
+	c.TcpServer.CallOnConnStart(c)
 
 	// 监控该链接是否操作完毕
 	select {
@@ -158,6 +160,9 @@ func (c *Connection) Stop() {
 		return
 	}
 	c.IsClosed = true
+	// 链接即将停止后的，回调函数
+	c.TcpServer.CallOnConnStop(c)
+
 	close(c.ExitedBuffChan)
 	close(c.msgBuffChan)
 	err := c.Conn.Close()
